@@ -8,14 +8,12 @@ on:
 
 jobs:
   build:
-    permissions:
-      contents: write
     strategy:
       matrix:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: YTF-Windows
+            artifact_name: YTF-Windows.exe
             artifact_path: src-tauri/target/x86_64-pc-windows-msvc/release/ytf.exe
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -54,19 +52,38 @@ jobs:
     - name: Build Tauri App
       run: npm run tauri build -- --target ${{ matrix.target }}
       
+    - name: Rename Artifact
+      run: mv "${{ matrix.artifact_path }}" "${{ matrix.artifact_name }}"
+      shell: bash
+      
     - name: Upload Portable Executable
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.artifact_path }}
-        
-    - name: Publish to GitHub Releases
-      uses: softprops/action-gh-release@v2
-      if: github.ref == 'refs/heads/main'
-      with:
-        tag_name: "latest"
-        name: "YTF Desktop (Latest Build)"
-        draft: false
-        prerelease: false
-        files: ${{ matrix.artifact_path }}
-        make_latest: true
+        path: ${{ matrix.artifact_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+          
+      - name: Display downloaded files
+        run: ls -la artifacts
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "latest"
+          name: "YTF Desktop (Latest Build)"
+          draft: false
+          prerelease: false
+          files: artifacts/*
+          make_latest: true
