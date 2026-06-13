@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# YTF (YouTube Free) Desktop
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+YTF Desktop is a highly optimized, ad-free, and privacy-respecting YouTube client for Windows. Built for performance and portability, it completely avoids heavy web engines by leveraging native system capabilities.
 
-Currently, two official plugins are available:
+## 🎯 Goal of the App
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The primary goal of YTF Desktop is to provide a pristine, 1080p, ad-free YouTube experience in a truly lightweight, standalone application. 
+Unlike official YouTube clients or bloated Electron-based wrappers that consume significant RAM and aggressively cache data, YTF is designed to be lean. It targets users who want a simple, beautiful interface to follow their favorite subscriptions and watch videos seamlessly without accounts, trackers, or interruptions.
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Zero Ads, Zero Tracking:** Uses natively ad-free 1080p embeds via [Piped.video](https://piped.video/), meaning you never have to deal with pre-roll ads, mid-roll interruptions, or complex ad-blocking extensions.
+- **Account-Free Subscriptions:** Subscribe to YouTube channels directly within the app using their Channel IDs. The app fetches data securely via RSS feeds without requiring a Google Account.
+- **Portable Executable:** The entire application is compiled into a single, standalone `.exe` file. No messy installers or complex setups required.
+- **Ultra-Lightweight:** Built with Tauri and native Windows WebView2, consuming a fraction of the RAM and CPU compared to standard Electron apps or Google Chrome.
+- **Persistent Watch History:** The app locally remembers your watch progress, allowing you to seamlessly pick up where you left off if interrupted.
+- **Beautiful UI:** Features a modern, glassmorphism-inspired interface with fluid micro-animations for a premium feel.
 
-## Expanding the ESLint configuration
+## 🛠️ Technology Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Backend:** Rust / [Tauri v2](https://v2.tauri.app/) (For high performance and system-level file access).
+- **Frontend:** React + TypeScript + Vite.
+- **Styling:** Custom Vanilla CSS utilizing modern CSS variables and glassmorphism.
+- **Video Delivery:** Privacy-respecting frontend API via Piped.
+- **CI/CD:** Automated builds using GitHub Actions to output the portable `.exe`.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Getting Started
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Since YTF is a portable app, installation is simple:
+1. Head over to the **Actions** tab of this repository.
+2. Click on the latest successful "Build Portable Tauri App" workflow run.
+3. Scroll down to the **Artifacts** section and download the `YTF-Portable-Windows` `.zip` file.
+4. Extract the folder and double-click `ytf.exe` to launch the app!
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*(Note: Windows SmartScreen may flag the executable since it is not digitally signed by a paid publisher. You can click "More info" and "Run anyway").*
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔮 Possible Improvements
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+While fully functional, YTF has several avenues for future enhancement:
+- **Search Functionality:** Implementing an Invidious or Piped API integration to allow searching for videos globally rather than relying strictly on channel RSS subscriptions.
+- **Subscription Import:** Adding a feature to parse and import a Google Takeout `.csv` or `.opml` file so users can instantly bring over their existing YouTube subscriptions.
+- **SponsorBlock Integration:** Automatically skipping in-video sponsor segments, intros, and outros for an even cleaner viewing experience.
+- **Cross-Platform Builds:** Extending the GitHub Actions pipeline to compile `.dmg` (macOS) and `.AppImage` (Linux) portable binaries.
+- **Download for Offline Viewing:** Utilizing the backend Rust environment and `yt-dlp` to allow users to save 1080p MP4s directly to their hard drive.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📝 License
+This project is open source and designed for personal use.
