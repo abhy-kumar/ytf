@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { BaseDirectory, readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
+import { Command } from '@tauri-apps/plugin-shell';
+import { downloadDir } from '@tauri-apps/api/path';
 
 interface VideoPlayerProps {
   videoId: string;
@@ -41,17 +43,43 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onBack }) => 
   // With iframe, we cannot accurately track progress as easily as react-player without messaging.
   // But Piped respects start= parameter. For simplicity without a heavy polling, we'll rely on Piped's playback.
   
+  const handleDownload = async () => {
+    try {
+      const dDir = await downloadDir();
+      alert('Download started! Check your Downloads folder soon.');
+      const command = Command.sidecar('bin/yt-dlp', [
+        '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        '-P', dDir,
+        `https://www.youtube.com/watch?v=${videoId}`
+      ]);
+      const output = await command.execute();
+      if (output.code === 0) {
+        alert('Download completed successfully!');
+      } else {
+        alert('Download failed: ' + output.stderr);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while downloading.');
+    }
+  };
+
   if (!ready) return null;
 
   return (
     <div className="player-view">
-      <button className="back-btn" onClick={onBack}>
-        <ArrowLeft size={24} />
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
+        <button className="back-btn" onClick={onBack} style={{ position: 'relative', top: 0, left: 0 }}>
+          <ArrowLeft size={24} />
+        </button>
+        <button className="subscribe-btn" onClick={handleDownload} style={{ width: 'auto', padding: '0.5rem 1rem' }}>
+          Download 1080p
+        </button>
+      </div>
       
       <div className="player-wrapper">
         <iframe
-          src={`https://piped.video/embed/${videoId}?autoplay=1&t=${Math.floor(startOffset)}`}
+          src={`https://piped.video/embed/${videoId}?autoplay=1&t=${Math.floor(startOffset)}&sponsorblock=1`}
           title="Piped Video Player"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
