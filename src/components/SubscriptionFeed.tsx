@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import type { SubscriptionEntry } from '../hooks/useSubscriptions';
-import type { Video } from '../lib/youtube';
-import { Trash2 } from 'lucide-react';
+import type { Video } from '../lib/yt-dlp';
+import { formatDuration, formatDate, formatViews } from '../lib/youtube';
+import { Trash2, RefreshCw, Loader2 } from 'lucide-react';
 
 interface SubscriptionFeedProps {
   onPlayVideo: (videoId: string) => void;
@@ -73,7 +74,7 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <button className="subscribe-btn" onClick={handleSearch}>
+          <button className="subscribe-btn" onClick={handleSearch} disabled={loading}>
             Search
           </button>
           {isSearchMode && (
@@ -105,14 +106,19 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
       </div>
 
       {subscribeMsg && (
-        <div className={`subscribe-msg ${subscribeMsg.includes('Failed') || subscribeMsg.includes('Could not') || subscribeMsg.includes('Invalid') || subscribeMsg.includes('Already') ? 'error' : 'success'}`}>
+        <div className={`subscribe-msg ${subscribeMsg.includes('Could not') || subscribeMsg.includes('Invalid') || subscribeMsg.includes('Already') ? 'error' : 'success'}`}>
           {subscribeMsg}
         </div>
       )}
 
       {showSubs && (
         <div className="subscriptions-panel">
-          <h3>Your Channels</h3>
+          <div className="subscriptions-panel-header">
+            <h3>Your Channels</h3>
+            <button className="icon-btn" onClick={refresh} disabled={loading} title="Refresh feed">
+              <RefreshCw size={16} className={loading ? 'spin' : ''} />
+            </button>
+          </div>
           {subscriptions.length === 0 ? (
             <p className="text-dim">No subscriptions yet.</p>
           ) : (
@@ -134,9 +140,6 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
               ))}
             </div>
           )}
-          <button className="subscribe-btn secondary" onClick={refresh} disabled={loading} style={{ marginTop: '12px' }}>
-            Refresh Feed
-          </button>
         </div>
       )}
 
@@ -144,9 +147,12 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
 
       <div className="video-grid">
         {loading ? (
-          <p style={{ padding: '0 40px', color: 'var(--text-muted)' }}>{progressText}</p>
+          <div className="feed-loading">
+            <Loader2 size={32} className="spin" />
+            <p>{progressText}</p>
+          </div>
         ) : videos.length === 0 ? (
-          <p style={{ padding: '0 40px', color: 'var(--text-muted)' }}>
+          <p style={{ padding: '0 40px', color: 'var(--text-dim)' }}>
             {subscriptions.length === 0
               ? 'Subscribe to a channel to get started.'
               : 'No videos found.'}
@@ -154,10 +160,24 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
         ) : (
           videos.map((vid: Video) => (
             <div key={vid.id} className="video-card" onClick={() => onPlayVideo(vid.id)}>
-              <img src={vid.thumbnail} alt={vid.title} className="video-thumbnail" loading="lazy" />
+              <div className="video-thumbnail-wrapper">
+                <img src={vid.thumbnail} alt={vid.title} className="video-thumbnail" loading="lazy" />
+                {vid.duration ? (
+                  <span className="video-duration">{formatDuration(vid.duration)}</span>
+                ) : null}
+              </div>
               <div className="video-info">
                 <div className="video-title">{vid.title}</div>
-                <div className="video-channel">{vid.author}</div>
+                <div className="video-meta">
+                  <span className="video-channel">{vid.author}</span>
+                  {(vid.viewCount || vid.uploadDate) && (
+                    <span className="video-stats">
+                      {vid.viewCount ? formatViews(vid.viewCount) : ''}
+                      {vid.viewCount && vid.uploadDate ? ' \u00b7 ' : ''}
+                      {vid.uploadDate ? formatDate(vid.uploadDate) : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))
