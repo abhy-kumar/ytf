@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { parseStringPromise } from 'xml2js';
+
+import { BaseDirectory, readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 
 interface Video {
   id: string;
@@ -17,16 +19,28 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // In a real app, we'd load subscriptions from DB and fetch all their RSS feeds.
-  // For simplicity, we just fetch one or let user add and store in DB.
-
   useEffect(() => {
     loadSubscriptions();
   }, []);
 
+  const getDb = async () => {
+    try {
+      const hasDb = await exists('db.json', { baseDir: BaseDirectory.AppData });
+      if (!hasDb) {
+        const defaultDb = { subscriptions: [], watchProgress: {} };
+        await writeTextFile('db.json', JSON.stringify(defaultDb), { baseDir: BaseDirectory.AppData });
+        return defaultDb;
+      }
+      const text = await readTextFile('db.json', { baseDir: BaseDirectory.AppData });
+      return JSON.parse(text);
+    } catch (e) {
+      console.error(e);
+      return { subscriptions: [], watchProgress: {} };
+    }
+  };
+
   const loadSubscriptions = async () => {
-    // @ts-ignore
-    const db = await window.electronAPI.getDb();
+    const db = await getDb();
     if (db.subscriptions && db.subscriptions.length > 0) {
       setLoading(true);
       let allVideos: Video[] = [];
@@ -42,19 +56,24 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
   const fetchChannelVideos = async (channelId: string) => {
     try {
       const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-      // @ts-ignore
-      const xmlData = await window.electronAPI.fetchRss(rssUrl);
+      const response = await tauriFetch(rssUrl, { method: 'GET' });
+      const xmlData = await response.text();
+      
       if (!xmlData) return [];
 
-      const result = await parseStringPromise(xmlData);
-      const entries = result.feed.entry || [];
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlData, "text/xml");
+      const entries = Array.from(xmlDoc.getElementsByTagName("entry"));
       
-      return entries.map((entry: any) => ({
-        id: entry['yt:videoId'][0],
-        title: entry.title[0],
-        thumbnail: entry['media:group'][0]['media:thumbnail'][0].$.url,
-        author: entry.author[0].name[0]
-      }));
+      return entries.map((entry) => {
+        const id = entry.getElementsByTagName("yt:videoId")[0]?.textContent || "";
+        const title = entry.getElementsByTagName("title")[0]?.textContent || "";
+        const author = entry.getElementsByTagName("name")[0]?.textContent || "";
+        const mediaGroup = entry.getElementsByTagName("media:group")[0];
+        const thumbnail = mediaGroup?.getElementsByTagName("media:thumbnail")[0]?.getAttribute("url") || "";
+        
+        return { id, title, thumbnail, author };
+      });
     } catch (err) {
       console.error('Failed to parse RSS for', channelId, err);
       return [];
@@ -63,20 +82,15 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
 
   const handleSubscribe = async () => {
     if (!channelInput) return;
-    
-    // Extract channel ID from URL or assume it's an ID
-    // Simplification: assume user pastes channel ID directly for now
     const channelId = channelInput.includes('channel/') 
       ? channelInput.split('channel/')[1].split('/')[0] 
       : channelInput;
 
-    // @ts-ignore
-    const db = await window.electronAPI.getDb();
+    const db = await getDb();
     if (!db.subscriptions) db.subscriptions = [];
     if (!db.subscriptions.includes(channelId)) {
       db.subscriptions.push(channelId);
-      // @ts-ignore
-      await window.electronAPI.saveDb(db);
+      await writeTextFile('db.json', JSON.stringify(db, null, 2), { baseDir: BaseDirectory.AppData });
     }
     
     setChannelInput('');
@@ -93,7 +107,7 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
         <input 
           type="text" 
           className="subscribe-input"
-          placeholder="Paste YouTube Channel ID (e.g. UCX6OQ3DkcsbYNE6H8uQQuVA)"
+          placeholder="Paste YouTube Channel ID"
           value={channelInput}
           onChange={e => setChannelInput(e.target.value)}
         />

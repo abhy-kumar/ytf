@@ -19,15 +19,21 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-        
+
+    - name: install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      
     - name: Install dependencies
-      run: npm ci || npm install
+      run: npm install
       
-    - name: Build and Package Electron App
-      run: npm run build
-      
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+    - name: Build Tauri App
+      uses: tauri-apps/tauri-action@v0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: YTF-Windows-Executable
-        path: release/*.exe
+        tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
+        releaseName: 'YTF v__VERSION__'
+        releaseBody: 'See the assets to download this version and install.'
+        releaseDraft: true
+        prerelease: false
+        args: --target x86_64-pc-windows-msvc
