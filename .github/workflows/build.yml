@@ -1,11 +1,10 @@
-name: Build Electron App
+name: Build Portable Tauri App
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
   build:
@@ -13,7 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+      
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
@@ -27,13 +26,10 @@ jobs:
       run: npm install
       
     - name: Build Tauri App
-      uses: tauri-apps/tauri-action@v0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: npm run tauri build -- --target x86_64-pc-windows-msvc
+      
+    - name: Upload Portable Executable
+      uses: actions/upload-artifact@v4
       with:
-        tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
-        releaseName: 'YTF v__VERSION__'
-        releaseBody: 'See the assets to download this version and install.'
-        releaseDraft: true
-        prerelease: false
-        args: --target x86_64-pc-windows-msvc
+        name: YTF-Portable-Windows
+        path: src-tauri/target/x86_64-pc-windows-msvc/release/ytf.exe
