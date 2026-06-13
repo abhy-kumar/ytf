@@ -19,16 +19,15 @@ function App() {
           Subscriptions
         </div>
 
-
         <div style={{ marginTop: 'auto', padding: '16px', fontSize: '14px', color: 'var(--text-dim)', textAlign: 'center' }}>
           Ad-Free &bull; 1080p
         </div>
       </div>
 
       {currentVideoId ? (
-        <VideoPlayer 
-          videoId={currentVideoId} 
-          onBack={() => setCurrentVideoId(null)} 
+        <VideoPlayer
+          videoId={currentVideoId}
+          onBack={() => setCurrentVideoId(null)}
         />
       ) : (
         <SubscriptionFeed onPlayVideo={setCurrentVideoId} />
