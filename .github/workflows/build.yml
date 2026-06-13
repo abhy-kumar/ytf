@@ -8,6 +8,8 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -57,3 +59,14 @@ jobs:
       with:
         name: ${{ matrix.artifact_name }}
         path: ${{ matrix.artifact_path }}
+        
+    - name: Publish to GitHub Releases
+      uses: softprops/action-gh-release@v2
+      if: github.ref == 'refs/heads/main'
+      with:
+        tag_name: "latest"
+        name: "YTF Desktop (Latest Build)"
+        draft: false
+        prerelease: false
+        files: ${{ matrix.artifact_path }}
+        make_latest: true
