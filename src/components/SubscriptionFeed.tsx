@@ -126,22 +126,41 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
     if (!success) {
       // Fallback to yt-dlp native search
       try {
-        const command = Command.sidecar('bin/yt-dlp', [`ytsearch15:${searchInput}`, '-J']);
+        const command = Command.sidecar('bin/yt-dlp', ['--no-warnings', '--ignore-errors', '--dump-json', `ytsearch15:${searchInput}`]);
         const output = await command.execute();
         
-        if (output.code === 0) {
-          const data = JSON.parse(output.stdout);
-          const searchResults = (data.entries || []).map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-            author: item.uploader || item.channel
-          }));
+        let rawOut = output.stdout;
+        if (rawOut.charCodeAt(0) === 0xFEFF) {
+          rawOut = rawOut.slice(1);
+        }
+
+        const lines = rawOut.split('\n');
+        const searchResults = [];
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('{')) continue;
           
-          if (searchResults.length > 0) {
-            setVideos(searchResults);
-            success = true;
+          try {
+            const item = JSON.parse(trimmed);
+            if (item.id && item.title) {
+              searchResults.push({
+                id: item.id,
+                title: item.title,
+                thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+                author: item.uploader || item.channel || "YouTube"
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse yt-dlp json line", e);
           }
+        }
+        
+        if (searchResults.length > 0) {
+          setVideos(searchResults);
+          success = true;
+        } else {
+          console.error("yt-dlp returned no valid videos. stderr:", output.stderr);
         }
       } catch (err) {
         console.error('yt-dlp search failed', err);
