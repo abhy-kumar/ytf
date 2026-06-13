@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { extractStreamUrl, downloadVideo } from '../lib/youtube';
+import { getStreamUrl, downloadVideo } from '../lib/yt-dlp';
 import { getWatchProgress, saveWatchProgress } from '../lib/db';
 import { downloadDir } from '@tauri-apps/api/path';
 
@@ -15,14 +15,14 @@ export function useVideoPlayer(videoId: string | null) {
   const loadVideo = useCallback(async (id: string) => {
     abortRef.current = false;
     setLoading(true);
-    setLoadingMsg('Loading video...');
+    setLoadingMsg('Extracting stream...');
     setStreamUrl(null);
     setStartOffset(0);
 
     try {
       const [progress, url] = await Promise.all([
         getWatchProgress(id),
-        extractStreamUrl(id),
+        getStreamUrl(id),
       ]);
 
       if (abortRef.current) return;
@@ -31,7 +31,7 @@ export function useVideoPlayer(videoId: string | null) {
       if (url) {
         setStreamUrl(url);
       } else {
-        setLoadingMsg('Failed to extract video stream.');
+        setLoadingMsg('Failed to extract stream. Video may be restricted.');
       }
     } catch (e) {
       console.error('Failed to load video:', e);
@@ -53,12 +53,11 @@ export function useVideoPlayer(videoId: string | null) {
   );
 
   const handleDownload = useCallback(async () => {
-    if (!videoId || downloading) return;
+    if (!videoId || downloading) return false;
     setDownloading(true);
     try {
       const dir = await downloadDir();
-      const success = await downloadVideo(videoId, dir);
-      return success;
+      return await downloadVideo(videoId, dir);
     } finally {
       setDownloading(false);
     }
