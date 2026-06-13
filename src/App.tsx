@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SubscriptionFeed } from './components/SubscriptionFeed';
 import { VideoPlayer } from './components/VideoPlayer';
-import { PlaySquare, Search, Compass } from 'lucide-react';
+import { PlaySquare } from 'lucide-react';
 
 function App() {
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
