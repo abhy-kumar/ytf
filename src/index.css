@@ -381,3 +381,164 @@ native-video {
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+
+/* Subscribe Bar */
+.subscribe-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0 40px;
+  margin-bottom: 1rem;
+}
+
+.subscribe-msg {
+  padding: 10px 20px;
+  margin: 0 40px 1rem;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+}
+
+.subscribe-msg.success {
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: var(--accent-cyan);
+}
+
+.subscribe-msg.error {
+  background: rgba(255, 0, 60, 0.1);
+  border: 1px solid rgba(255, 0, 60, 0.3);
+  color: var(--accent-magenta);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subscriptions Panel */
+.subscriptions-panel {
+  margin: 0 40px 1.5rem;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-thin);
+  border-radius: 16px;
+}
+
+.subscriptions-panel h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+
+.text-dim {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.subscriptions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.subscription-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-thin);
+  transition: background 0.2s;
+}
+
+.subscription-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.subscription-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.subscription-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subscription-id {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.unsubscribe-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.unsubscribe-btn:hover {
+  color: var(--accent-magenta);
+  background: rgba(255, 0, 60, 0.1);
+}
+
+/* Error Banner */
+.error-banner {
+  padding: 10px 20px;
+  margin: 0 40px 1rem;
+  border-radius: 10px;
+  font-size: 14px;
+  background: rgba(255, 0, 60, 0.08);
+  border: 1px solid rgba(255, 0, 60, 0.2);
+  color: var(--accent-magenta);
+}
+
+/* Player Loading */
+.player-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-dim);
+  font-size: 16px;
+}
+
+/* Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Disabled button state */
+.subscribe-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.subscribe-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
