@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { BaseDirectory, readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
 import { Command } from '@tauri-apps/plugin-shell';
@@ -11,10 +11,13 @@ interface VideoPlayerProps {
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onBack }) => {
   const [startOffset, setStartOffset] = useState<number>(0);
-  const [ready, setReady] = useState(false);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [loadingMsg, setLoadingMsg] = useState('Initializing player...');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     loadProgress();
+    extractStreamUrl();
   }, [videoId]);
 
   const getDb = async () => {
@@ -37,12 +40,36 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onBack }) => 
     if (db.watchProgress && db.watchProgress[videoId]) {
       setStartOffset(db.watchProgress[videoId]);
     }
-    setReady(true);
   };
 
-  // With iframe, we cannot accurately track progress as easily as react-player without messaging.
-  // But Piped respects start= parameter. For simplicity without a heavy polling, we'll rely on Piped's playback.
-  
+  const saveProgress = async (time: number) => {
+    const db = await getDb();
+    if (!db.watchProgress) db.watchProgress = {};
+    db.watchProgress[videoId] = time;
+    await writeTextFile('db.json', JSON.stringify(db, null, 2), { baseDir: BaseDirectory.AppData });
+  };
+
+  const extractStreamUrl = async () => {
+    setLoadingMsg('Extracting high-quality stream via yt-dlp...');
+    try {
+      const command = Command.sidecar('bin/yt-dlp', [
+        '-f', 'best[ext=mp4]/best',
+        '-g',
+        `https://www.youtube.com/watch?v=${videoId}`
+      ]);
+      const output = await command.execute();
+      if (output.code === 0) {
+        setStreamUrl(output.stdout.trim());
+      } else {
+        setLoadingMsg('Failed to extract stream.');
+        console.error(output.stderr);
+      }
+    } catch (err) {
+      setLoadingMsg('Error calling yt-dlp sidecar.');
+      console.error(err);
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const dDir = await downloadDir();
@@ -64,12 +91,20 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onBack }) => 
     }
   };
 
-  if (!ready) return null;
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      // Save progress every 5 seconds roughly
+      const time = videoRef.current.currentTime;
+      if (time % 5 < 0.5) {
+        saveProgress(time);
+      }
+    }
+  };
 
   return (
     <div className="player-view">
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem' }}>
-        <button className="back-btn" onClick={onBack} style={{ position: 'relative', top: 0, left: 0 }}>
+      <div className="player-header">
+        <button className="back-btn" onClick={onBack}>
           <ArrowLeft size={24} />
         </button>
         <button className="subscribe-btn" onClick={handleDownload} style={{ width: 'auto', padding: '0.5rem 1rem' }}>
@@ -78,21 +113,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onBack }) => 
       </div>
       
       <div className="player-wrapper">
-        <iframe
-          src={`https://piped.video/embed/${videoId}?autoplay=1&t=${Math.floor(startOffset)}&sponsorblock=1`}
-          title="Piped Video Player"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          width="100%"
-          height="100%"
-          style={{ position: 'absolute', top: 0, left: 0 }}
-        />
+        {!streamUrl ? (
+          <div style={{ color: 'var(--text-main)', fontSize: '18px' }}>{loadingMsg}</div>
+        ) : (
+          <video
+            ref={videoRef}
+            src={streamUrl}
+            autoPlay
+            controls
+            onLoadedMetadata={(e) => {
+              if (startOffset > 0) {
+                e.currentTarget.currentTime = startOffset;
+              }
+            }}
+            onTimeUpdate={handleTimeUpdate}
+            style={{ width: '100%', height: '100%', outline: 'none', background: '#000' }}
+          />
+        )}
       </div>
       
       <div className="player-details">
         <h2 className="player-title">Now Playing</h2>
-        <p style={{ color: 'var(--text-muted)' }}>
-          Playing via Piped - 1080p Ad-Free Native Embed.
+        <p style={{ color: 'var(--accent-cyan)' }}>
+          Playing via yt-dlp Native Engine - Ad-Free
         </p>
       </div>
     </div>

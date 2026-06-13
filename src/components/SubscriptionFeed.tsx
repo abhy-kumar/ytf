@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BaseDirectory, readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { open } from '@tauri-apps/plugin-dialog';
+import { Command } from '@tauri-apps/plugin-shell';
 
 interface Video {
   id: string;
@@ -88,31 +89,115 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
       return;
     }
     setLoading(true);
-    try {
-      const response = await tauriFetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(searchInput)}&filter=all`, { method: 'GET' });
-      const data = await response.json();
-      
-      const searchResults = (data.items || [])
-        .filter((item: any) => item.type === "stream")
-        .map((item: any) => ({
-          id: item.url.replace('/watch?v=', ''),
-          title: item.title,
-          thumbnail: item.thumbnail,
-          author: item.uploaderName
-        }));
+    let success = false;
+    
+    // Try multiple APIs
+    const invidiousApis = [
+      'https://iv.melmac.space/api/v1/search?q=',
+      'https://invidious.lunar.icu/api/v1/search?q=',
+      'https://invidious.jing.rocks/api/v1/search?q='
+    ];
+
+    for (const api of invidiousApis) {
+      try {
+        const response = await tauriFetch(`${api}${encodeURIComponent(searchInput)}`, { method: 'GET' });
+        if (response.ok) {
+          const data = await response.json();
+          const searchResults = data
+            .filter((item: any) => item.type === "video")
+            .map((item: any) => ({
+              id: item.videoId,
+              title: item.title,
+              thumbnail: item.videoThumbnails?.find((t: any) => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+              author: item.author
+            }));
+          
+          if (searchResults.length > 0) {
+            setVideos(searchResults);
+            success = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('API failed:', api);
+      }
+    }
+
+    if (!success) {
+      // Fallback to yt-dlp native search
+      try {
+        const command = Command.sidecar('bin/yt-dlp', [`ytsearch15:${searchInput}`, '-J']);
+        const output = await command.execute();
         
-      setVideos(searchResults);
-    } catch (err) {
-      console.error('Search failed', err);
+        if (output.code === 0) {
+          const data = JSON.parse(output.stdout);
+          const searchResults = (data.entries || []).map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+            author: item.uploader || item.channel
+          }));
+          
+          if (searchResults.length > 0) {
+            setVideos(searchResults);
+            success = true;
+          }
+        }
+      } catch (err) {
+        console.error('yt-dlp search failed', err);
+      }
+    }
+    
+    if (!success) {
+        alert("Search failed. The public APIs might be down. Try again later.");
+        setVideos([]);
     }
     setLoading(false);
   };
 
+  const resolveChannelId = async (input: string) => {
+    if (input.startsWith('UC') && input.length === 24) return input;
+    
+    let urlToFetch = input;
+    if (input.startsWith('@')) {
+      urlToFetch = `https://www.youtube.com/${input}`;
+    } else if (!input.startsWith('http')) {
+      urlToFetch = `https://www.youtube.com/@${input}`;
+    }
+
+    try {
+      const res = await tauriFetch(urlToFetch, { method: 'GET' });
+      const html = await res.text();
+      
+      const match = html.match(/channelId":"(UC[a-zA-Z0-9_-]+)"/);
+      if (match && match[1]) return match[1];
+      
+      const metaMatch = html.match(/<meta itemprop="channelId" content="(UC[a-zA-Z0-9_-]+)">/);
+      if (metaMatch && metaMatch[1]) return metaMatch[1];
+    } catch(e) {
+      console.error("Failed to resolve channel id", e);
+    }
+    return null;
+  };
+
   const handleSubscribe = async () => {
     if (!channelInput) return;
-    const channelId = channelInput.includes('channel/') 
+    
+    setLoading(true);
+    let channelId = channelInput.includes('channel/') 
       ? channelInput.split('channel/')[1].split('/')[0] 
       : channelInput;
+
+    if (!channelId.startsWith('UC') || channelId.length !== 24) {
+      const resolved = await resolveChannelId(channelInput);
+      if (resolved) {
+        channelId = resolved;
+      } else {
+        alert("Could not resolve channel ID. Please provide a valid YouTube URL, handle, or channel ID.");
+        setLoading(false);
+        return;
+      }
+    }
 
     const db = await getDb();
     if (!db.subscriptions) db.subscriptions = [];
@@ -122,6 +207,7 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
     }
     
     setChannelInput('');
+    setLoading(false);
     loadSubscriptions();
   };
 
@@ -194,12 +280,12 @@ export const SubscriptionFeed: React.FC<SubscriptionFeedProps> = ({ onPlayVideo 
           <input 
             type="text" 
             className="subscribe-input"
-            placeholder="Paste YouTube Channel ID"
+            placeholder="YouTube Channel URL, @handle, or ID"
             value={channelInput}
             onChange={e => setChannelInput(e.target.value)}
           />
           <button className="subscribe-btn" onClick={handleSubscribe}>Subscribe</button>
-          <button className="subscribe-btn" style={{ background: 'var(--surface)', color: 'var(--text)' }} onClick={handleImport}>Import CSV</button>
+          <button className="subscribe-btn secondary" onClick={handleImport}>Import CSV</button>
         </div>
       </div>
 

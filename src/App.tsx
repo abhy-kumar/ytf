@@ -8,26 +8,19 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="sidebar glass">
+      <div className="sidebar">
         <div className="brand">
-          <PlaySquare size={32} color="#ff3366" />
+          <PlaySquare className="brand-icon" size={36} />
           YTF Desktop
         </div>
 
         <div className="nav-item active">
-          <PlaySquare size={20} />
+          <PlaySquare size={22} />
           Subscriptions
         </div>
-        <div className="nav-item" style={{ opacity: 0.5 }}>
-          <Compass size={20} />
-          Discover (WIP)
-        </div>
-        <div className="nav-item" style={{ opacity: 0.5 }}>
-          <Search size={20} />
-          Search (WIP)
-        </div>
 
-        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+
+        <div style={{ marginTop: 'auto', padding: '16px', fontSize: '14px', color: 'var(--text-dim)', textAlign: 'center' }}>
           Ad-Free &bull; 1080p
         </div>
       </div>
